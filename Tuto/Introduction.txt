@@ -1,0 +1,834 @@
+Introduction
+Creating a CRUD (Create, Read, Update, Delete) API in .NET 8 with an In-memory collection is a common scenario in web development. In this article, We’ll walk through building a complete .NET 8 Web API with a real-world use case.
+
+Prerequisites
+
+Visual Studio or Visual Studio Code (with .NET 8 SDK installed).
+
+What is an API?
+API stands for Application Programming Interface.
+It defines the rules that you must follow to communicate with other software systems.
+Developers expose APIs so that other applications can communicate with their applications programmatically.
+What is RESTful API?
+RESTful API is an interface that two computer systems use to exchange information securely over the internet.
+Most business applications have to communicate with other internal and third-party applications to perform various tasks.
+CRUD Operations?
+CRUD stands for “Create, Read, Update, and Delete,”
+
+
+.Net 8 WEB API
+Step 1. Open a visual studio and click on “Create a new project”.
+
+
+Step 2. Select the “ASP .NET Core Web API” template and click on the “Next” button.
+
+
+Step 3. Enter the “Project Name” & select the “Location” and click the “Next” button.
+
+
+Step 4
+
+Select Framework 6.0 or greater. I am selecting .Net 8.0 (Long-Term Support)
+“Configuration for HTTPS” should be checked — It will run our application in HTTPS protocol.
+“Enable Open API Support” should be checked — It will configure Swagger for you.
+“Use Controller” should be checked — It will help to create a controller-based API.
+Click on “Next” to proceed.
+
+It will generate a web API scaffolding with a predefined WeatherForecastController API.
+
+
+Step 5. Let’s delete the existing WeatherForecast Controller and add a new OurHeroController to this project.
+
+Right-click on the Controller folder ( go to Open Solution Explorer and select Controller folder).
+
+Select API -> “API Controller — Empty” and click on the “Add” button.
+
+
+Enter the Controller name and click on the Add button to generate a template for this.
+
+
+Step 6. Let’s add the below folder to our solution.
+
+Model
+Services
+Right-click on Solution -> Add -> New Forder
+
+
+Like this
+
+
+Step 7. Add OurHero Model in the model folder.
+
+Select a Model folder and press Ctrl +Shift +A to generate a C# class.
+
+or
+
+Right-click on Model folder -> Add -> New Item -> Enter Class(Model Name like OurHero.cs) Name and press the Add button.
+
+// OurHero.cs
+
+namespace DotNet8WebAPI.Model
+{
+    public class OurHero
+    {
+        public int Id { get; set; }
+        public required string FirstName { get; set; }
+        public string LastName { get; set; } = string.Empty;
+        public bool isActive { get; set; } = true;
+    }
+}
+AddUpdateOurHero.cs model is being used to add or update our hero list.
+
+//AddUpdateOurHero.cs
+namespace DotNet8WebAPI.Model
+{
+    public class AddUpdateOurHero
+    {
+        public required string FirstName { get; set; }
+        public string LastName { get; set; } = string.Empty;
+        public bool isActive { get; set; } = true;
+    }
+}
+Step 8. Create Service files.
+
+IOurHeroService: Interface
+In this file, we are going to define ourHero business logic.
+OurHeroService: Class,
+we are going to implement IOurHeroService methods.
+// IOurHeroService.cs
+
+using DotNet8WebAPI.Model;
+
+namespace DotNet8WebAPI.Services
+{
+    public interface IOurHeroService
+    {
+        List<OurHero> GetAllHeros(bool? isActive);
+
+        OurHero? GetHerosByID(int id);
+
+        OurHero AddOurHero(AddUpdateOurHero obj);
+
+        OurHero? UpdateOurHero(int id, AddUpdateOurHero obj);
+
+        bool DeleteHerosByID(int id);
+    }
+}
+// OurHeroService.cs
+
+using DotNet8WebAPI.Model;
+
+namespace DotNet8WebAPI.Services
+{
+    public class OurHeroService : IOurHeroService
+    {
+        private readonly List<OurHero> _ourHeroesList;
+        public OurHeroService()
+        {
+            _ourHeroesList = new List<OurHero>()
+            {
+                new OurHero(){
+                Id = 1,
+                FirstName = "Test",
+                LastName = "",
+                isActive = true,
+                }
+            };
+        }
+
+        public List<OurHero> GetAllHeros(bool? isActive)
+        {
+            return isActive == null ? _ourHeroesList : _ourHeroesList.Where(hero => hero.isActive == isActive).ToList();
+        }
+
+        public OurHero? GetHerosByID(int id)
+        {
+            return _ourHeroesList.FirstOrDefault(hero => hero.Id == id);
+        }
+
+        public OurHero AddOurHero(AddUpdateOurHero obj)
+        {
+            var addHero = new OurHero()
+            {
+                Id = _ourHeroesList.Max(hero => hero.Id) + 1,
+                FirstName = obj.FirstName,
+                LastName = obj.LastName,
+                isActive = obj.isActive,
+            };
+
+            _ourHeroesList.Add(addHero);
+
+            return addHero;
+        }
+
+        public OurHero? UpdateOurHero(int id, AddUpdateOurHero obj)
+        {
+            var ourHeroIndex = _ourHeroesList.FindIndex(index => index.Id == id);
+            if (ourHeroIndex > 0)
+            {
+                var hero = _ourHeroesList[ourHeroIndex];
+
+                hero.FirstName = obj.FirstName;
+                hero.LastName = obj.LastName;
+                hero.isActive = obj.isActive;
+
+                _ourHeroesList[ourHeroIndex] = hero;
+
+                return hero;
+            }
+            else
+            {
+                return null;
+            }
+        }
+        public bool DeleteHerosByID(int id)
+        {
+            var ourHeroIndex = _ourHeroesList.FindIndex(index => index.Id == id);
+            if (ourHeroIndex >= 0)
+            {
+                _ourHeroesList.RemoveAt(ourHeroIndex);
+            }
+            return ourHeroIndex >= 0;
+        }
+    }
+}
+In the service file, we are using the in-memory collection to store all _ourHeroesList data.
+
+private readonly List<OurHero> _ourHeroesList;
+public OurHeroService()
+{
+    _ourHeroesList = new List<OurHero>()
+    {
+        new OurHero(){
+        Id = 1,
+        FirstName = "Test",
+        LastName = "",
+        isActive = true,
+        }
+    };
+}
+Step 9. Register OurHeroService service in the Program.cs file as a Singleton.
+
+//*********************** Add services to the container.***********************
+builder.Services.AddSingleton<IOurHeroService, OurHeroService>();
+//*********************** Add services to the container end.***********************
+In .Net 8, we can register our service.
+
+AddSingleton: a single object present across the application
+AddScoped: One request for one instance (if we are injecting the same service more than once, then it will share the same instance.)
+AddTransient: always create a new instance (if we are injecting the same service more than once, then it will provide a new instance every time.)
+// Program.cs
+
+using DotNet8WebAPI.Services;
+
+var builder = WebApplication.CreateBuilder(args);
+
+//*********************** Add services to the container.***********************
+builder.Services.AddSingleton<IOurHeroService, OurHeroService>();
+//*********************** Add services to the container end.***********************
+
+
+builder.Services.AddControllers();
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();
+Step 10. Inject IOurHeroService in OurHeroController.
+
+Open OurHeroController file
+Add a Contractor
+inject IOurHeroService in the Contractor
+// OurHeroController.cs
+using DotNet8WebAPI.Services;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+
+namespace DotNet8WebAPI.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class OurHeroController : ControllerBase
+    {
+        private readonly IOurHeroService _heroService;
+
+        public OurHeroController(IOurHeroService heroService)
+        {
+            _heroService = heroService;
+        }
+    }
+}
+Step 11. Add Get API in OurHeroController.
+
+// OurHeroService.cs
+
+[HttpGet]
+public IActionResult Get([FromQuery] bool? isActive = null)
+{
+    return Ok(_heroService.GetAllHeros(isActive));
+}
+HttpGet. it makes this method a GET method
+
+IActionResult: It represents a return type to the action method.
+[FromQuery]: indicate getting this value from API Query String
+_heroService.GetAllHeros(isActive): get all OurHero data from OurHeroService
+Ok(object): sending data with 200 status codes.
+Step 12. Add other action method
+
+Get ID — to fetch OurHero by ID
+Post — Add new OurHero
+Put — Update OurHero
+Delete- delete OurHero by ID
+using DotNet8API.Model;
+using DotNet8API.services;
+using Microsoft.AspNetCore.Mvc;
+
+namespace DotNet8API.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class OurHeroController : ControllerBase
+    {
+        private readonly IOurHeroService _heroService;
+
+        public OurHeroController(IOurHeroService heroService)
+        {
+            _heroService = heroService;
+        }
+
+        [HttpGet]
+        public IActionResult Get([FromQuery] bool? isActive = null)
+        {
+            return Ok(_heroService.GetAllHeros(isActive));
+        }
+
+        [HttpGet]
+        [Route("{id}")]
+        public IActionResult Get(int id)
+        {
+            var hero = _heroService.GetHerosByID(id);
+            if (hero == null)
+            {
+                return NotFound();
+            }
+            return Ok(hero);
+        }
+
+        [HttpPost]
+        public IActionResult Post(AddUpdateOurHero heroObject)
+        {
+            var hero = _heroService.AddOurHero(heroObject);
+
+            if (hero == null)
+            {
+                return BadRequest();
+            }
+
+            return Ok(new
+            {
+                message = "Super Hero Created Successfully!!!",
+                id = hero!.Id
+            });
+        }
+
+        [HttpPut]
+        [Route("{id}")]
+        public IActionResult Put([FromRoute] int id, [FromBody] AddUpdateOurHero heroObject)
+        {
+            var hero = _heroService.UpdateOurHero(id, heroObject);
+            if (hero == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(new
+            {
+                message = "Super Hero Updated Successfully!!!",
+                id = hero!.Id
+            });
+        }
+
+        [HttpDelete]
+        [Route("{id}")]
+        public IActionResult Delete([FromRoute] int id)
+        {
+            if (!_heroService.DeleteHerosByID(id))
+            {
+                return NotFound();
+            }
+
+            return Ok(new
+            {
+                message = "Super Hero Deleted Successfully!!!",
+                id = id
+            });
+        }
+    }
+}
+Step 13. Run our API project.
+
+Visual Studio
+
+Press the F5 keyboard shortcut to run our app.
+
+DOT NET CLI cmd
+
+Open our project in cmd
+Run “dotnet run” cmd to launch our project.
+Swagger shows all API lists.
+
+
+Run get our heros API.
+
+Open “/api/OurHero”
+Click on “Try it out”
+select isActive if required
+Click on the “Execute” button to send a request.
+
+Summary
+
+
+Introduction
+In this article, we are going to discuss What Entity Framework is and How we can implement it in the .Net 8 project. This is a continuation of part 1, so if you are new to this article, please check my part 1 before proceeding. In this article, we are going to implement EF8 code first approach.
+
+What is Entity Framework?
+Entity Framework (EF) is an object-relational mapper that enables .NET developers to work with relational data using domain-specific objects.
+It eliminates the need for most of the data-access code that developers usually need to write.
+Its purpose is to abstract the ties to a relational database.
+Why Entity Framework?
+Entity Framework is an ORM, and ORMs are aimed to increase the developer’s productivity by reducing the redundant task of persisting the data used in our applications.
+
+Features of Entity Framework
+Entity Framework is a lightweight and extensible object-relational mapping (ORM) technology.
+Entity Framework supports multiple platforms like Windows, Linux, and macOS.
+Entity Framework supports both relational and non-relational data sources.
+Entity Framework works efficiently with widely used databases like SQL Server, SQL Server Compact, SQLite, and PostgreSQL.
+Entity Framework makes it easier for programmers to perform create, read, update, and delete (CRUD) operations by supporting databases. It also makes it easier for developers to perform unit testing by keeping in-memory tables.
+Entity Framework Development Approaches
+There are three approaches to creating entity frameworks.
+
+Code First Approach
+The Code First approach enables us to create a model and relation using classes and then create the database from these classes. It enables us to work with the Entity Framework in an object-oriented manner. In this approach, you can use empty databases and add tables too.
+
+Model First Approach
+In this approach, model classes and their relation are created first using the ORM designer, and the physical database will be generated using this model. The Model First approach means we create a diagram of the entity and relation that will be converted automatically into a code model.
+
+Database First Approach
+The Database First approach enables us to create an entity model from the existing database. This approach helps us to reduce the amount of code that we need to write. The following procedure will create an entity model using the Database First approach.
+
+Prerequisites
+
+Visual Studio 2022 (Any Edition — Community / Professional / Enterprise)
+Microsoft SQL Server 2008 or above.
+.Net Core 8 SDK or Later Version
+Steps to Follow to Implement EF8
+Step 1. Install Entity Framework Package from NuGet.
+
+Right Click on your project -> Click on”Manage NuGet Packages” -> Open “Browse” tab -> search below EF8 package
+
+Microsoft.EntityFrameworkCore
+Microsoft.EntityFrameworkCore.Design
+Microsoft.EntityFrameworkCore.Tools
+Microsoft.EntityFrameworkCore.SqlServer
+
+Step 2. Add OurHeroDbContext file in our project.
+
+Open a solution
+Right-click and add the “Entity” folder
+add OurHeroDbContext class (select “Entity” folder and press Ctrl +Shift +A to create a class )
+inherit DbContext class
+Add constructor and accept EF option and send to DbContext
+// OurHeroDbContext.cs
+using Microsoft.EntityFrameworkCore;
+
+namespace DotNet8WebAPI.Entity
+{
+    public class OurHeroDbContext : DbContext
+    {
+        public OurHeroDbContext(DbContextOptions<OurHeroDbContext> options) : base(options)
+        {
+        }
+    }
+}
+Step 3. Registered DB Model in OurHeroDbContext file.
+
+Configured our EF model and loaded pre-defined data(master data).
+
+// OurHeroDbContext.cs
+using DotNet8WebAPI.Model;
+using Microsoft.EntityFrameworkCore;
+
+namespace DotNet8WebAPI.Entity
+{
+    public class OurHeroDbContext : DbContext
+    {
+        public OurHeroDbContext(DbContextOptions<OurHeroDbContext> options) : base(options)
+        {
+        }
+        // Registered DB Model in OurHeroDbContext file
+        public DbSet<OurHero> OurHeros { get; set; }
+
+        /*
+         OnModelCreating mainly used to configured our EF model
+         And insert master data if required
+        */
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            // Setting a primary key in OurHero model
+            modelBuilder.Entity<OurHero>().HasKey(x => x.Id);
+
+            // Inserting record in OurHero table
+            modelBuilder.Entity<OurHero>().HasData(
+                new OurHero
+                {
+                    Id = 1,
+                    FirstName = "System",
+                    LastName = "",
+                    isActive = true,
+                }
+            );
+        }
+    }
+}
+Step 4. Add ConnectionStrings in appsettings.json file
+
+"ConnectionStrings": {
+  "OurHeroConnectionString": "Data Source=LAPTOP-4TSM9SDC;Initial Catalog=OurHeroDB; Integrated Security=true;TrustServerCertificate=True;"
+}
+//appsettings.json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "ConnectionStrings": {
+    "OurHeroConnectionString": "Data Source=LAPTOP-4TSM9SDC;Initial Catalog=OurHeroDB; Integrated Security=true;TrustServerCertificate=True;"
+  },
+  "AllowedHosts": "*"
+}
+Step 5. Register DbContext
+
+Select your Database — I’m using an SQL server as a database. That’s why I called the UseSqlServer method.
+
+Provide ConnectionString
+
+//*********************** Register DbContext and provide ConnectionString .***********************
+builder.Services.AddDbContext<OurHeroDbContext>(db => db.UseSqlServer(builder.Configuration.GetConnectionString("OurHeroConnectionString")), ServiceLifetime.Singleton);
+//*********************** Register DbContext end.***********************
+// Program.cs
+
+using DotNet8WebAPI.Entity;
+using DotNet8WebAPI.Services;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+//*********************** Add services to the container.***********************
+builder.Services.AddTransient<IOurHeroService, OurHeroService>();
+//*********************** Add services to the container end.***********************
+
+//*********************** Register DbContext and provide ConnectionString .***********************
+builder.Services.AddDbContext<OurHeroDbContext>(db => db.UseSqlServer(builder.Configuration.GetConnectionString("OurHeroConnectionString")), ServiceLifetime.Singleton);
+//*********************** Register DbContext end.***********************
+
+builder.Services.AddControllers();
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+app.UseAuthorization();
+app.MapControllers();
+app.Run();
+Step 6. Go to OurHeroService and inject our OurHeroDbContext in the constructor.
+
+// OurHeroService.cs
+
+using DotNet8WebAPI.Entity;
+using DotNet8WebAPI.Model;
+
+namespace DotNet8WebAPI.Services
+{
+    public class OurHeroService : IOurHeroService
+    {
+        private readonly OurHeroDbContext _db;
+        public OurHeroService(OurHeroDbContext db)
+        {
+            _db = db;
+        }
+    }
+}
+Step 7. Now use db context instead of in-memory collection to fetch OurHeros record.
+
+Use async-await to fetch the OurHeros record asynchronously.
+
+instead of returning pain object return as a Task<List<OurHero>>
+
+List<OurHero> → Task<List<OurHero>>
+
+// OurHeroService.cs
+
+using DotNet8WebAPI.Entity;
+using DotNet8WebAPI.Model;
+using Microsoft.EntityFrameworkCore;
+
+namespace DotNet8WebAPI.Services
+{
+    public class OurHeroService : IOurHeroService
+    {
+        private readonly OurHeroDbContext _db;
+        public OurHeroService(OurHeroDbContext db)
+        {
+            _db = db;
+        }
+
+        public async Task<List<OurHero>> GetAllHeros(bool? isActive)
+        {
+            if (isActive == null) { return await _db.OurHeros.ToListAsync(); }
+
+            return await _db.OurHeros.Where(obj => obj.isActive == isActive).ToListAsync();
+        }
+
+        public async Task<OurHero?> GetHerosByID(int id)
+        {
+            return await _db.OurHeros.FirstOrDefaultAsync(hero => hero.Id == id);
+        }
+
+        public async Task<OurHero?> AddOurHero(AddUpdateOurHero obj)
+        {
+            var addHero = new OurHero()
+            {
+                FirstName = obj.FirstName,
+                LastName = obj.LastName,
+                isActive = obj.isActive,
+            };
+
+            _db.OurHeros.Add(addHero);
+            var result = await _db.SaveChangesAsync();
+            return result >= 0 ? addHero : null;
+        }
+
+        public async Task<OurHero?> UpdateOurHero(int id, AddUpdateOurHero obj)
+        {
+            var hero = await _db.OurHeros.FirstOrDefaultAsync(index => index.Id == id);
+            if (hero != null)
+            {
+                hero.FirstName = obj.FirstName;
+                hero.LastName = obj.LastName;
+                hero.isActive = obj.isActive;
+
+                var result = await _db.SaveChangesAsync();
+                return result >= 0 ? hero : null;
+            }
+            return null;
+        }
+
+        public async Task<bool> DeleteHerosByID(int id)
+        {
+            var hero = await _db.OurHeros.FirstOrDefaultAsync(index => index.Id == id);
+            if (hero != null)
+            {
+                _db.OurHeros.Remove(hero);
+                var result = await _db.SaveChangesAsync();
+                return result >= 0;
+            }
+            return false;
+        }
+    }
+}
+Step 8. In IOurHeroService.
+
+Update method return type.
+
+Return as a Task instead of the normal class model.
+
+Task<List<OurHero>> GetAllHeros(bool? isActive);
+
+// IOurHeroService.cs
+using DotNet8WebAPI.Model;
+
+namespace DotNet8WebAPI.Services
+{
+    public interface IOurHeroService
+    {
+        Task<List<OurHero>> GetAllHeros(bool? isActive);
+        Task<OurHero?> GetHerosByID(int id);
+        Task<OurHero?> AddOurHero(AddUpdateOurHero obj);
+        Task<OurHero?> UpdateOurHero(int id, AddUpdateOurHero obj);
+        Task<bool> DeleteHerosByID(int id);
+    }
+}
+Step 9. Open OurHeroController file.
+
+Implement async-await in all action methods because now our IOurHeroService returns a response asynchronously.
+
+[HttpGet]
+public async Task<IActionResult> Get([FromQuery] bool? isActive = null)
+{
+var heros = await _heroService.GetAllHeros(isActive);
+return Ok(heros);
+}
+
+// OurHeroController.cs
+using DotNet8WebAPI.Model;
+using DotNet8WebAPI.Services;
+using Microsoft.AspNetCore.Mvc;
+
+namespace DotNet8WebAPI.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class OurHeroController : ControllerBase
+    {
+        private readonly IOurHeroService _heroService;
+        public OurHeroController(IOurHeroService heroService)
+        {
+            _heroService = heroService;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Get([FromQuery] bool? isActive = null)
+        {
+            var heros = await _heroService.GetAllHeros(isActive);
+            return Ok(heros);
+        }
+
+        [HttpGet("{id}")]
+        //[Route("{id}")] // /api/OurHero/:id
+        public async Task<IActionResult> Get(int id)
+        {
+            var hero = await _heroService.GetHerosByID(id);
+            if (hero == null)
+            {
+                return NotFound();
+            }
+            return Ok(hero);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Post([FromBody] AddUpdateOurHero heroObject)
+        {
+            var hero = await _heroService.AddOurHero(heroObject);
+
+            if (hero == null)
+            {
+                return BadRequest();
+            }
+
+            return Ok(new
+            {
+                message = "Super Hero Created Successfully!!!",
+                id = hero!.Id
+            });
+        }
+
+        [HttpPut]
+        [Route("{id}")]
+        public async Task<IActionResult> Put([FromRoute] int id, [FromBody] AddUpdateOurHero heroObject)
+        {
+            var hero = await _heroService.UpdateOurHero(id, heroObject);
+            if (hero == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(new
+            {
+                message = "Super Hero Updated Successfully!!!",
+                id = hero!.Id
+            });
+        }
+
+        [HttpDelete]
+        [Route("{id}")]
+        public async Task<IActionResult> Delete([FromRoute] int id)
+        {
+            if (!await _heroService.DeleteHerosByID(id))
+            {
+                return NotFound();
+            }
+
+            return Ok(new
+            {
+                message = "Super Hero Deleted Successfully!!!",
+                id = id
+            });
+        }
+    }
+}
+Step 10. Now, our Entity Framework integration is almost ready.
+
+Next
+
+Visual Studio
+
+Open the Tools menu (available in the Visual Studio toolbar)
+Select NuGet package manager
+Then Select Package Manager Console
+
+
+Run the add-migration [name] command to generate a DB migration file.
+
+Once the file is ready
+
+
+Then, run the update-database command to reflect the migration change on our database side.
+
+
+After running the update-database command. If you are also getting the same Error.
+
+Only the invariant culture is supported in the globalization-invariant mode.
+
+Then follow the below stem to fix this issue.
+
+Open a solution explorer
+Double-click on your project
+It will open the .csproj file
+update the InvariantGlobalization setting from true to false (It’s available in the PropertyGroup section)
+Save .csproj file
+Run the update-database command again
+Once the updated database runs successfully, you will verify your Database in the SQL Server like this.
+
+
+Step 11. Now, our Entity Framework has been implemented successfully.
+
+We can run our application and verify.
+
+
+Currently, we have one entry because we are inserted using the OnModelCreating method.
+
+Now, I’m going to insert one more entry using post-API (/api/OurHero)
+
+
+Summary
+That’s it! You’ve created a complete .NET 8 Web API for CRUD operations with an SQL Server database. You can now integrate this API into your front-end application.
+
+Comment your query if anything is not working for you.
+
+Thanks for reading.

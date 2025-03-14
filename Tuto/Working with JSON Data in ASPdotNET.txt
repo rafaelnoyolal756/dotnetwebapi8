@@ -1,0 +1,207 @@
+Working with JSON Data in ASP.NET Core Web API
+Richard Nwonah
+Richard Nwonah
+
+·
+Follow
+
+4 min read
+·
+Sep 29, 2024
+90
+
+
+
+
+
+JSON (JavaScript Object Notation) is a lightweight, easy-to-read format used for data exchange. It’s the most popular format for web APIs due to its simplicity and compatibility with various platforms. In ASP.NET Core Web API, JSON is widely used to transmit data between clients and servers.
+
+This article will cover the basics of working with JSON data in ASP.NET Core Web API, focusing on:
+
+Sending JSON responses.
+Receiving JSON requests.
+Serialization and Deserialization.
+Customization options using Newtonsoft.Json and System.Text.Json.
+1. Setting Up ASP.NET Core Web API for JSON
+By default, ASP.NET Core Web API supports JSON through the built-in System.Text.Json library. When you create a new Web API project, it automatically configures JSON formatting.
+
+To start, create a new ASP.NET Core Web API project:
+
+dotnet new webapi -n JsonDemo
+cd JsonDemo
+This command creates a new API project named “JsonDemo.”
+
+2. Sending JSON Responses
+In ASP.NET Core, you can return JSON data from your API endpoints by simply returning objects from your action methods. The framework will automatically serialize the object to JSON format.
+
+[HttpGet]
+public IActionResult GetProduct()
+{
+    var product = new
+    {
+        Id = 1,
+        Name = "Laptop",
+        Price = 1200
+    };
+    
+    return Ok(product);
+}
+In this example, calling the GetProduct endpoint will return the following JSON response:
+
+{
+    "id": 1,
+    "name": "Laptop",
+    "price": 1200
+}
+. Receiving JSON Requests
+ASP.NET Core automatically deserializes incoming JSON requests into the method parameters or the action’s model binding.
+
+Consider the following example where you accept a Product object in the HTTP POST request body:
+
+[HttpPost]
+public IActionResult CreateProduct([FromBody] Product product)
+{
+    if (product == null)
+    {
+        return BadRequest("Invalid product data.");
+    }
+    // Process the product (e.g., save to database)
+    return Ok(product);
+}
+Here’s an example of a JSON payload that you can send with a POST request:
+
+{
+    "id": 1,
+    "name": "Laptop",
+    "price": 1200
+}
+4. Serialization and Deserialization in ASP.NET Core
+Serialization:
+Serialization is the process of converting an object into a JSON string. The System.Text.Json library in ASP.NET Core does this automatically when returning an object.
+
+For manual serialization, you can use JsonSerializer:
+
+var product = new Product { Id = 1, Name = "Laptop", Price = 1200 };
+var jsonString = JsonSerializer.Serialize(product);
+This converts the product object into a JSON string.
+
+Deserialization:
+Deserialization is the process of converting a JSON string back into an object.
+
+var jsonString = "{\"Id\":1,\"Name\":\"Laptop\",\"Price\":1200}";
+var product = JsonSerializer.Deserialize<Product>(jsonString);
+This will deserialize the JSON string into a Product object.
+
+5. Using Newtonsoft.Json for Advanced Scenarios
+While System.Text.Json is the default, you might need more advanced customization or compatibility with older projects using Newtonsoft.Json.
+
+To use Newtonsoft.Json, first install the package:
+
+dotnet add package Microsoft.AspNetCore.Mvc.NewtonsoftJson
+Then, modify your Startup.cs or Program.cs to use Newtonsoft.Json:
+
+builder.Services.AddControllers()
+    .AddNewtonsoftJson(options =>
+    {
+        options.SerializerSettings.Formatting = Formatting.Indented;
+    });
+Customizing JSON with Newtonsoft.Json:
+With Newtonsoft.Json, you can customize how objects are serialized and deserialized by using attributes:
+
+[JsonProperty]: Controls the name of a JSON property.
+public class Product
+{
+    [JsonProperty("product_id")]
+    public int Id { get; set; }
+    
+    [JsonProperty("product_name")]
+    public string Name { get; set; }
+    public decimal Price { get; set; }
+}
+This would output JSON with customized property names:
+
+{
+  "product_id": 1,
+  "product_name": "Laptop",
+  "price": 1200
+}
+[JsonIgnore]: Prevents a property from being serialized.
+ublic class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    [JsonIgnore]
+    public decimal Price { get; set; }
+}
+The Price property will be excluded from the JSON output.
+
+6. Customizing JSON Options with System.Text.Json
+System.Text.Json also offers customization, such as controlling property names, ignoring null values, or formatting output.
+
+Here’s how you can modify JSON serialization globally:
+
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.PropertyNamingPolicy = null; // Use original property names
+    options.JsonSerializerOptions.WriteIndented = true;         // Pretty-print JSON
+    options.JsonSerializerOptions.IgnoreNullValues = true;      // Ignore null values
+});
+7. Handling JSON Arrays and Collections
+You can easily return or accept JSON arrays and collections in ASP.NET Core Web API.
+
+Returning a JSON Array:
+[HttpGet]
+public IActionResult GetProducts()
+{
+    var products = new List<Product>
+    {
+        new Product { Id = 1, Name = "Laptop", Price = 1200 },
+        new Product { Id = 2, Name = "Smartphone", Price = 800 }
+    };
+
+    return Ok(products);
+}
+This will return a JSON array:
+
+[
+  {
+    "id": 1,
+    "name": "Laptop",
+    "price": 1200
+  },
+  {
+    "id": 2,
+    "name": "Smartphone",
+    "price": 800
+  }
+]
+Accepting a JSON Array:
+[HttpPost]
+public IActionResult CreateProducts([FromBody] List<Product> products)
+{
+    if (products == null || !products.Any())
+    {
+        return BadRequest("No products provided.");
+    }
+
+    // Process the product list
+    return Ok(products);
+}
+You can then post a JSON array:
+
+[
+  {
+    "id": 1,
+    "name": "Laptop",
+    "price": 1200
+  },
+  {
+    "id": 2,
+    "name": "Smartphone",
+    "price": 800
+  }
+]
+Conclusion
+ASP.NET Core Web API makes working with JSON data straightforward, thanks to built-in support for serialization, deserialization, and customization. Whether you use the default System.Text.Json or switch to Newtonsoft.Json for more complex needs, handling JSON in Web APIs is flexible and powerful.
+
+Mastering these concepts will help you build robust and efficient APIs that easily integrate with modern web and mobile applications.
